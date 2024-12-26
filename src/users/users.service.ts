@@ -9,22 +9,22 @@ export class UsersService {
 
 
   create(createUserDto: CreateUserDto) {
-    return 'This action adds a new user';
+    return this.usersRepository.create(createUserDto);
   }
 
-  findAll() {
-    return this.usersRepository.findAll();
+  findAll(page: number, limit: number) {
+    return this.usersRepository.findAll(page, limit);
   }
 
   findOne(id: number) {
-    return `This action returns a #${id} user`;
+    return this.usersRepository.findOne(id);
   }
 
   update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
+    return this.usersRepository.update(id, updateUserDto);
   }
 
   remove(id: number) {
-    return `This action removes a #${id} user`;
+    return this.usersRepository.remove(id);
   }
 }

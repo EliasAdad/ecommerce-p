@@ -9,7 +9,7 @@ export class User {
 
     address: string
 
-    phone: string
+    phone: number
 
     country?: string | undefined
 
