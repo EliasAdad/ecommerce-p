@@ -4,7 +4,9 @@ import { ProductsModule } from './products/products.module';
 import { AuthModule } from './auth/auth.module';
 
 @Module({
-  imports: [UsersModule, ProductsModule, AuthModule],
+  imports: [
+
+    UsersModule, ProductsModule, AuthModule],
   controllers: [],
   providers: [],
 })
