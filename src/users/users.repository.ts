@@ -2,55 +2,36 @@ import { Injectable } from "@nestjs/common";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { User } from "./entities/user.entity";
 import { UpdateUserDto } from "./dto/update-user.dto";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
 
 @Injectable()
 export class UsersRepository {
-    private users: User[] = [
-        {
-            id: 1,
-            email: "elias@mail.com",
-            name: "Elias",
-            password: "password123",
-            address: "45th street",
-            phone: 1151206007,
-            country: "Argentina",
-            city: "Buenos Aires"
-        },
-        {
-            id: 2,
-            email: "manuel@mail.com",
-            name: "Manuel",
-            password: "password123",
-            address: "2nd avenue",
-            phone: 1161206007,
-            country: "Argentina",
-            city: "Buenos Aires"
-        },
-    ]
+    constructor(@InjectRepository(User) private usersRepository: Repository<User>) { }
+
+
 
     async create(user: CreateUserDto) {
-        let id = this.users.length + 1
-
-        this.users = [...this.users, { id, ...user }]
-
-        return { id }
+        const newUser = await this.usersRepository.save(user);
+        return newUser
     }
 
 
     async findAll(page: number = 1, limit: number = 5) {
+        const users = await this.usersRepository.find();
 
-        if (!this.users.length) return "Users not found";
+        if (!users) return "Users not found";
 
         const startIndex = (page - 1) * limit
         const endIndex = startIndex + limit
-        const paginated = this.users.slice(startIndex, endIndex).map(({ password, ...rest }) => rest)
+        const paginated = users.slice(startIndex, endIndex).map(({ password, ...rest }) => rest)
 
         return paginated;
     }
 
 
     async findOne(id: number) {
-        const user = this.users.find((user) => user.id === id);
+        const user = await this.usersRepository.findOne({ where: { id } })
         if (!user) return { error: "User not found" }
 
         const { password, ...withoutPw } = user;
@@ -60,9 +41,9 @@ export class UsersRepository {
 
 
     async findByEmail(email: string) {
-        const userExists = this.users.find((user) => user.email === email)
+        const userExists = await this.usersRepository.findOne({ where: { email } })
 
-        // if (!userExists) return "User not found"
+        // if (!userExists) return { error: "User not found" }
 
         return userExists;
     }
@@ -70,25 +51,27 @@ export class UsersRepository {
 
     async update(id: number, userData: UpdateUserDto) {
 
-        const userIndex = this.users.findIndex((user) => user.id === id)
+        const userFound = await this.usersRepository.findOne({ where: { id } })
 
-        if (userIndex === -1) {
-            return "User not found"
-        }
+        if (!userFound) return { error: "User not found" }
 
-        this.users[userIndex] = { ...this.users[userIndex], ...userData };
+        await this.usersRepository.update(id, userData)
 
-        return { message: "User updated successfully!", user: this.users[userIndex].id };
+        const updated = await this.usersRepository.findOne({ where: { id } })
+
+        const { password, ...withoutPw } = updated;
+
+        return withoutPw;
     }
 
 
     async remove(id: number) {
-        const userIndex = this.users.findIndex((user) => user.id === id)
+        const user = await this.usersRepository.findOne({ where: { id } })
 
-        if (userIndex === -1) return "User not found";
+        if (!user) return { error: "User not found" };
 
-        const [deletedUser] = this.users.splice(userIndex, 1)
+        await this.usersRepository.delete(id)
 
-        return { deleted: deletedUser.id }
+        return { message: "User deleted successfully", user: user.id }
     }
 }
