@@ -6,7 +6,7 @@ import { AuthGuard } from 'src/auth/auth.guard';
 
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) { }
+  constructor(private productsService: ProductsService) { }
 
   @Post('add')
   @UseGuards(AuthGuard)
@@ -19,20 +19,26 @@ export class ProductsController {
     return this.productsService.findAll(page, limit);
   }
 
+  @Get('seeder')
+  addProductsSeeder() {
+    return this.productsService.addProductsSeeder()
+  }
+
+
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.productsService.findOne(+id);
+    return this.productsService.findOne(id);
   }
 
   @Put('update/:id')
   @UseGuards(AuthGuard)
   update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
-    return this.productsService.update(+id, updateProductDto);
+    return this.productsService.update(id, updateProductDto);
   }
 
   @Delete('delete/:id')
   @UseGuards(AuthGuard)
   remove(@Param('id') id: string) {
-    return this.productsService.remove(+id);
+    return this.productsService.remove(id);
   }
 }

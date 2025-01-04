@@ -5,25 +5,29 @@ import { ProductsRepository } from './products.repository';
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly productsRepository: ProductsRepository) { }
+  constructor(private productsRepository: ProductsRepository) { }
 
   create(product: CreateProductDto) {
     return this.productsRepository.create(product);
+  }
+
+  addProductsSeeder() {
+    return this.productsRepository.addProductsSeeder();
   }
 
   findAll(page: number, limit: number) {
     return this.productsRepository.findAll(page, limit);
   }
 
-  findOne(id: number) {
+  findOne(id: string) {
     return this.productsRepository.findOne(id);
   }
 
-  update(id: number, updateProductDto: UpdateProductDto) {
+  update(id: string, updateProductDto: UpdateProductDto) {
     return this.productsRepository.update(id, updateProductDto);
   }
 
-  remove(id: number) {
+  remove(id: string) {
     return this.productsRepository.remove(id);
   }
 }

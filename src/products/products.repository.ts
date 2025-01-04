@@ -1,47 +1,35 @@
 import { Injectable } from "@nestjs/common";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Product } from "./entities/product.entity";
+import { Repository } from "typeorm";
+import { Category } from "src/categories/entities/category.entity";
+import * as data from '../utils/seeders/products.json'
 
-Injectable()
+
+@Injectable()
 export class ProductsRepository {
-    private products = [
-        {
-            id: 1,
-            name: "Product 1",
-            description: "Description of product 1",
-            price: 15.00,
-            stock: 10,
-            imgUrl: "http://imgurl.com"
-        },
-        {
-            id: 2,
-            name: "Product 2",
-            description: "Description of product 2",
-            price: 28.00,
-            stock: 0,
-            imgUrl: "http://imgurl.com"
-        },
-        {
-            id: 3,
-            name: "Product 3",
-            description: "Description of product 3",
-            price: 40.00,
-            stock: 1,
-            imgUrl: "http://imgurl.com"
-        },
-    ]
+    constructor(@InjectRepository(Product) private productsRepository: Repository<Product>,
+        @InjectRepository(Category) private categoriesRepository: Repository<Category>
+    ) { }
+
+
 
     async create(product: CreateProductDto) {
-        let id = this.products.length + 1;
-        this.products = [...this.products, { id, ...product }]
+        const newProduct = await this.productsRepository.save(product)
 
-        return { id }
+        return newProduct;
     }
 
-    async findAll(page: number = 1, limit: number = 5) {
-        if (!this.products.length) return "There's no products to show"
 
-        const inStock = this.products.filter((product) => product.stock > 0)
+    async findAll(page: number = 1, limit: number = 5) {
+
+        const products = await this.productsRepository.find()
+
+        if (!products) return "There's no products to show"
+
+        const inStock = products.filter((product) => product.stock > 0)
 
         const startIndex = (page - 1) * limit;
         const endIndex = startIndex + limit;
@@ -51,31 +39,65 @@ export class ProductsRepository {
         return paginated;
     }
 
-    async findOne(id: number) {
-        const product = this.products.find((product) => product.id === id);
 
-        if (!product) return { error: "Product not found" }
+    async addProductsSeeder() {
+
+        const categories = await this.categoriesRepository.find()
+
+        if (!categories) return { error: "Categories not found." }
+
+        data?.map(async (element) => {
+            const relatedCategory = categories.find((category) => category.name === element.category)
+
+            const newProduct = new Product()
+
+            newProduct.name = element.name
+            newProduct.description = element.description
+            newProduct.price = Number(element.price.toFixed(2))
+            newProduct.stock = element.stock
+            newProduct.category = relatedCategory
+
+            await this.productsRepository.createQueryBuilder()
+                .insert()
+                .into(Product)
+                .values(newProduct)
+                .orUpdate(["description", "price", "stock"], ["name"],)
+                .execute()
+
+        })
+
+
+        return { message: "Products added successfully!" }
+    }
+
+
+    async findOne(id: string) {
+        const product = await this.productsRepository.findOne({ where: { id } })
+
+        if (!product || product.stock === 0) return { error: "Product not found or it's out of stock." }
 
         return product;
     }
 
-    async update(id: number, data: UpdateProductDto) {
-        const productIndex = this.products.findIndex((product) => product.id === id)
 
-        if (productIndex === -1) return "Product not found or doesn't exist."
+    async update(id: string, data: UpdateProductDto) {
+        const foundProduct = await this.productsRepository.findOne({ where: { id } })
 
-        this.products[productIndex] = { ...this.products[productIndex], ...data }
+        if (!foundProduct) return { error: "Product not found or doesn't exist." }
 
-        return { updated: this.products[productIndex].id }
+        await this.productsRepository.update(id, data)
+
+        return await this.productsRepository.findOne({ where: { id } })
     }
 
-    async remove(id: number) {
-        const productIndex = this.products.findIndex((product) => product.id === id)
 
-        if (productIndex === -1) return { error: "The product doesn't exist." }
+    async remove(id: string) {
+        const foundProduct = await this.productsRepository.findOne({ where: { id } })
 
-        const [deletedProduct] = this.products.splice(productIndex, 1)
+        if (!foundProduct) return { error: "Product not found or doesn't exist" }
 
-        return { deleted: deletedProduct }
+        await this.productsRepository.delete(id)
+
+        return { message: "Product removed successfully!" }
     }
 }

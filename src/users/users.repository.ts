@@ -30,8 +30,8 @@ export class UsersRepository {
     }
 
 
-    async findOne(id: number) {
-        const user = await this.usersRepository.findOne({ where: { id } })
+    async findOne(id: string) {
+        const user = await this.usersRepository.findOne({ where: { id }, relations: { orders: true } })
         if (!user) return { error: "User not found" }
 
         const { password, ...withoutPw } = user;
@@ -49,7 +49,7 @@ export class UsersRepository {
     }
 
 
-    async update(id: number, userData: UpdateUserDto) {
+    async update(id: string, userData: UpdateUserDto) {
 
         const userFound = await this.usersRepository.findOne({ where: { id } })
 
@@ -65,7 +65,7 @@ export class UsersRepository {
     }
 
 
-    async remove(id: number) {
+    async remove(id: string) {
         const user = await this.usersRepository.findOne({ where: { id } })
 
         if (!user) return { error: "User not found" };
