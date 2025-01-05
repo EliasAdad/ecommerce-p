@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { User } from "./entities/user.entity";
 import { UpdateUserDto } from "./dto/update-user.dto";
@@ -32,7 +32,7 @@ export class UsersRepository {
 
     async findOne(id: string) {
         const user = await this.usersRepository.findOne({ where: { id }, relations: { orders: true } })
-        if (!user) return { error: "User not found" }
+        if (!user) throw new NotFoundException("User not found")
 
         const { password, ...withoutPw } = user;
 
