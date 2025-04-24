@@ -1,103 +1,93 @@
-import { Injectable } from "@nestjs/common";
-import { CreateProductDto } from "./dto/create-product.dto";
-import { UpdateProductDto } from "./dto/update-product.dto";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Product } from "./entities/product.entity";
-import { Repository } from "typeorm";
-import { Category } from "src/categories/entities/category.entity";
-import * as data from '../utils/seeders/products.json'
-
+import { Injectable } from '@nestjs/common';
+import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Product } from './entities/product.entity';
+import { Repository } from 'typeorm';
+import { Category } from 'src/categories/entities/category.entity';
+import * as data from '../utils/seeders/products.json';
 
 @Injectable()
 export class ProductsRepository {
-    constructor(@InjectRepository(Product) private productsRepository: Repository<Product>,
-        @InjectRepository(Category) private categoriesRepository: Repository<Category>
-    ) { }
+  constructor(
+    @InjectRepository(Product) private productsRepository: Repository<Product>,
+    @InjectRepository(Category) private categoriesRepository: Repository<Category>,
+  ) {}
 
+  async create(product: CreateProductDto) {
+    const newProduct = await this.productsRepository.save(product);
 
+    return newProduct;
+  }
 
-    async create(product: CreateProductDto) {
-        const newProduct = await this.productsRepository.save(product)
+  async findAll(page: number = 1, limit: number = 5) {
+    const products = await this.productsRepository.find();
 
-        return newProduct;
-    }
+    if (!products) return 'There are no products to show';
 
+    const inStock = products.filter(product => product.stock > 0);
 
-    async findAll(page: number = 1, limit: number = 5) {
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginated = inStock.slice(startIndex, endIndex);
 
-        const products = await this.productsRepository.find()
+    return paginated;
+  }
 
-        if (!products) return "There's no products to show"
+  async addProductsSeeder() {
+    const categories = await this.categoriesRepository.find();
 
-        const inStock = products.filter((product) => product.stock > 0)
+    if (!categories) return { error: 'Categories not found.' };
 
-        const startIndex = (page - 1) * limit;
-        const endIndex = startIndex + limit;
-        const paginated = inStock.slice(startIndex, endIndex)
+    data?.map(async element => {
+      const relatedCategory = categories.find(category => category.name === element.category);
 
+      const newProduct = new Product();
 
-        return paginated;
-    }
+      newProduct.name = element.name;
+      newProduct.description = element.description;
+      newProduct.price = Number(element.price.toFixed(2));
+      newProduct.stock = element.stock;
+      newProduct.category = relatedCategory;
 
+      await this.productsRepository
+        .createQueryBuilder()
+        .insert()
+        .into(Product)
+        .values(newProduct)
+        .orUpdate(['description', 'price', 'stock'], ['name'])
+        .execute();
+    });
 
-    async addProductsSeeder() {
+    return { message: 'Products added successfully!' };
+  }
 
-        const categories = await this.categoriesRepository.find()
+  async findOne(id: string) {
+    const product = await this.productsRepository.findOne({ where: { id } });
 
-        if (!categories) return { error: "Categories not found." }
+    if (!product || product.stock === 0)
+      return { error: "Product not found or it's out of stock." };
 
-        data?.map(async (element) => {
-            const relatedCategory = categories.find((category) => category.name === element.category)
+    return product;
+  }
 
-            const newProduct = new Product()
+  async update(id: string, data: UpdateProductDto) {
+    const foundProduct = await this.productsRepository.findOne({ where: { id } });
 
-            newProduct.name = element.name
-            newProduct.description = element.description
-            newProduct.price = Number(element.price.toFixed(2))
-            newProduct.stock = element.stock
-            newProduct.category = relatedCategory
+    if (!foundProduct) return { error: "Product not found or doesn't exist." };
 
-            await this.productsRepository.createQueryBuilder()
-                .insert()
-                .into(Product)
-                .values(newProduct)
-                .orUpdate(["description", "price", "stock"], ["name"],)
-                .execute()
+    await this.productsRepository.update(id, data);
 
-        })
+    return await this.productsRepository.findOne({ where: { id } });
+  }
 
+  async remove(id: string) {
+    const foundProduct = await this.productsRepository.findOne({ where: { id } });
 
-        return { message: "Products added successfully!" }
-    }
+    if (!foundProduct) return { error: "Product not found or doesn't exist" };
 
+    await this.productsRepository.delete(id);
 
-    async findOne(id: string) {
-        const product = await this.productsRepository.findOne({ where: { id } })
-
-        if (!product || product.stock === 0) return { error: "Product not found or it's out of stock." }
-
-        return product;
-    }
-
-
-    async update(id: string, data: UpdateProductDto) {
-        const foundProduct = await this.productsRepository.findOne({ where: { id } })
-
-        if (!foundProduct) return { error: "Product not found or doesn't exist." }
-
-        await this.productsRepository.update(id, data)
-
-        return await this.productsRepository.findOne({ where: { id } })
-    }
-
-
-    async remove(id: string) {
-        const foundProduct = await this.productsRepository.findOne({ where: { id } })
-
-        if (!foundProduct) return { error: "Product not found or doesn't exist" }
-
-        await this.productsRepository.delete(id)
-
-        return { message: "Product removed successfully!" }
-    }
+    return { message: 'Product removed successfully!' };
+  }
 }
