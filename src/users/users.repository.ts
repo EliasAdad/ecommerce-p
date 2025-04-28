@@ -1,77 +1,69 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { CreateUserDto } from "./dto/create-user.dto";
-import { User } from "./entities/user.entity";
-import { UpdateUserDto } from "./dto/update-user.dto";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { CreateUserDto } from './dto/create-user.dto';
+import { User } from './entities/user.entity';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class UsersRepository {
-    constructor(@InjectRepository(User) private usersRepository: Repository<User>) { }
+  constructor(@InjectRepository(User) private usersRepository: Repository<User>) {}
 
+  async create(user: CreateUserDto) {
+    const newUser = await this.usersRepository.save(user);
+    return newUser;
+  }
 
+  async findAll(page: number = 1, limit: number = 5) {
+    const users = await this.usersRepository.find();
 
-    async create(user: CreateUserDto) {
-        const newUser = await this.usersRepository.save(user);
-        return newUser
-    }
+    if (!users) return new NotFoundException('Users not found');
 
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginated = users.slice(startIndex, endIndex).map(({ password, ...rest }) => rest);
 
-    async findAll(page: number = 1, limit: number = 5) {
-        const users = await this.usersRepository.find();
+    return paginated;
+  }
 
-        if (!users) return "Users not found";
+  async findOne(id: string) {
+    const user = await this.usersRepository.findOne({ where: { id }, relations: { orders: true } });
+    if (!user) throw new NotFoundException('User not found');
 
-        const startIndex = (page - 1) * limit
-        const endIndex = startIndex + limit
-        const paginated = users.slice(startIndex, endIndex).map(({ password, ...rest }) => rest)
+    const { password, ...withoutPw } = user;
 
-        return paginated;
-    }
+    return withoutPw;
+  }
 
+  async findByEmail(email: string) {
+    const userExists = await this.usersRepository.findOne({ where: { email } });
 
-    async findOne(id: string) {
-        const user = await this.usersRepository.findOne({ where: { id }, relations: { orders: true } })
-        if (!user) throw new NotFoundException("User not found")
+    // if (!userExists) return { error: "User not found" }
 
-        const { password, ...withoutPw } = user;
+    return userExists;
+  }
 
-        return withoutPw;
-    }
+  async update(id: string, userData: UpdateUserDto) {
+    const userFound = await this.usersRepository.findOne({ where: { id } });
 
+    if (!userFound) return { error: 'User not found' };
 
-    async findByEmail(email: string) {
-        const userExists = await this.usersRepository.findOne({ where: { email } })
+    await this.usersRepository.update(id, userData);
 
-        // if (!userExists) return { error: "User not found" }
+    const updated = await this.usersRepository.findOne({ where: { id } });
 
-        return userExists;
-    }
+    const { password, ...withoutPw } = updated;
 
+    return withoutPw;
+  }
 
-    async update(id: string, userData: UpdateUserDto) {
+  async remove(id: string) {
+    const user = await this.usersRepository.findOne({ where: { id } });
 
-        const userFound = await this.usersRepository.findOne({ where: { id } })
+    if (!user) return { error: 'User not found' };
 
-        if (!userFound) return { error: "User not found" }
+    await this.usersRepository.delete(id);
 
-        await this.usersRepository.update(id, userData)
-
-        const updated = await this.usersRepository.findOne({ where: { id } })
-
-        const { password, ...withoutPw } = updated;
-
-        return withoutPw;
-    }
-
-
-    async remove(id: string) {
-        const user = await this.usersRepository.findOne({ where: { id } })
-
-        if (!user) return { error: "User not found" };
-
-        await this.usersRepository.delete(id)
-
-        return { message: "User deleted successfully", user: user.id }
-    }
+    return { message: 'User deleted successfully', user: user.id };
+  }
 }
